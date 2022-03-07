@@ -135,4 +135,7 @@
 
     <!-- Wifi Standard. -->
     <string name="status_bar_wifi_standard">Wifi Standard</string>
+
+    <!-- Roaming icon -->
+    <string name="status_bar_roaming">Roaming indicator</string>
 </resources>
