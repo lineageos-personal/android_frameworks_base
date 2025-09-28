@@ -1075,4 +1075,6 @@ interface IActivityManager {
     String getSpoofTrickyStorePatch();
 
     void releaseMemory(int minAdj, int maxKillCount, boolean includeUIProcesses, boolean skipCamera);
+
+    void compactAllSystem();
 }
