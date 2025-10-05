@@ -108,7 +108,6 @@ internal constructor(
     private val currentRequestCallbacks: MutableList<TakeScreenshotService.RequestCallback> =
         mutableListOf()
 
-    private var screenBitmap: Bitmap? = null
     private var screenshotTakenInPortrait = false
     private var screenshotAnimation: Animator? = null
     private var packageName = ""
@@ -192,7 +191,6 @@ internal constructor(
             return
         }
 
-        screenBitmap = currentBitmap
         val oldPackageName = packageName
         packageName = screenshot.packageNameString
 
@@ -318,8 +316,11 @@ internal constructor(
 
     // Any cleanup needed when the service is being destroyed.
     override fun onDestroy() {
+        screenshotAnimation?.cancel()
+        screenshotAnimation = null
         removeWindow()
         screenshotSoundController.releaseScreenshotSoundAsync()
+        scrollCaptureExecutor.close()
         releaseContext()
         bgExecutor.shutdown()
         screenshotHandler.cancelTimeout()
@@ -329,7 +330,9 @@ internal constructor(
 
     /** Release the constructed window context. */
     private fun releaseContext() {
-        broadcastDispatcher.unregisterReceiver(copyBroadcastReceiver)
+        try {
+            broadcastDispatcher.unregisterReceiver(copyBroadcastReceiver)
+        } catch (t: Throwable) { }
         context.release()
     }
 
@@ -512,7 +515,10 @@ internal constructor(
 
         screenshotAnimation =
             viewProxy.createScreenshotDropInAnimation(screenRect, showFlash).apply {
-                doOnEnd { onAnimationComplete?.run() }
+                doOnEnd {
+                    onAnimationComplete?.run()
+                    screenshotAnimation = null
+                }
                 // Play the shutter sound to notify that we've taken a screenshot
                 playScreenShotSound()
                 if (LogConfig.DEBUG_ANIM) {
@@ -535,6 +541,8 @@ internal constructor(
     /** Reset screenshot view and then call onCompleteRunnable */
     private fun finishDismiss() {
         Log.d(TAG, "finishDismiss")
+        screenshotAnimation?.cancel()
+        screenshotAnimation = null
         actionsController.endScreenshotSession()
         scrollCaptureExecutor.close()
         currentRequestCallbacks.forEach { it.onFinish() }
@@ -572,9 +580,7 @@ internal constructor(
                     finisher.accept(result.uri)
                 } catch (e: Exception) {
                     Log.d(TAG, "Failed to store screenshot", e)
-                    if (LogConfig.DEBUG_CALLBACK) {
-                        Log.d(TAG, "calling back with uri: null")
-                    }
+                    logScreenshotResultStatus(null, screenshot.userHandle)
                     finisher.accept(null)
                 }
             },
@@ -602,13 +608,6 @@ internal constructor(
             0,
         ) == 1
     }
-
-    private val fullScreenRect: Rect
-        get() {
-            val displayMetrics = DisplayMetrics()
-            display.getRealMetrics(displayMetrics)
-            return Rect(0, 0, displayMetrics.widthPixels, displayMetrics.heightPixels)
-        }
 
     /** Injectable factory to create screenshot controller instances for a specific display. */
     @AssistedFactory
