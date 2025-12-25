@@ -110,6 +110,10 @@ open class SeekBarObserver(private val holder: MediaViewHolder) :
             holder.seekBar.contentDescription = ""
             holder.scrubbingElapsedTimeView.text = ""
             holder.scrubbingTotalTimeView.text = ""
+
+            val waveformSeekBar = holder.seekBar as? WaveformSeekBar
+            waveformSeekBar?.stopWaveAnimation()
+
             return
         }
 
@@ -121,14 +125,13 @@ open class SeekBarObserver(private val holder: MediaViewHolder) :
         progressDrawable?.animate =
             data.playing && !data.scrubbing && animationEnabled && data.listening
         progressDrawable?.transitionEnabled = !data.seekAvailable
-        
+
         val waveformSeekBar = holder.seekBar as? WaveformSeekBar
         if (data.playing && !data.scrubbing) {
             waveformSeekBar?.startWaveAnimation()
         } else {
             waveformSeekBar?.stopWaveAnimation()
         }
-
 
         if (holder.seekBar.maxHeight != seekBarEnabledMaxHeight) {
             holder.seekBar.maxHeight = seekBarEnabledMaxHeight
