@@ -425,6 +425,8 @@
     <protected-broadcast android:name="com.android.systemui.action.LAUNCH_SYSTEM_MEDIA_OUTPUT_DIALOG" />
     <protected-broadcast android:name="com.android.systemui.STARTED" />
 
+    <uses-permission android:name="android.permission.FORCE_STOP_PACKAGES"/>
+
     <application
         android:name=".application.impl.SystemUIApplicationImpl"
         android:persistent="true"
