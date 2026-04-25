@@ -19,6 +19,7 @@ package com.android.systemui.qs.tiles
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
 import android.service.quicksettings.Tile
 import android.view.WindowManager
 import com.android.internal.logging.MetricsLogger
@@ -37,6 +38,7 @@ import com.android.systemui.qs.pipeline.domain.interactor.PanelInteractor
 import com.android.systemui.qs.tileimpl.QSTileImpl
 import com.android.systemui.res.R
 import com.android.systemui.animation.Expandable
+import com.android.systemui.statusbar.VibratorHelper
 import javax.inject.Inject
 
 class ScreenshotTile @Inject constructor(
@@ -51,6 +53,7 @@ class ScreenshotTile @Inject constructor(
     qsLogger: QSLogger,
     private val panelInteractor: PanelInteractor,
     @Main private val handler: Handler,
+    private val vibratorHelper: VibratorHelper,
 ) : QSTileImpl<BooleanState>(
     host, uiEventLogger, backgroundLooper, mainHandler, falsingManager,
     metricsLogger, statusBarStateController, activityStarter, qsLogger,
@@ -65,6 +68,7 @@ class ScreenshotTile @Inject constructor(
     override fun newTileState(): BooleanState = BooleanState()
 
     override fun handleClick(expandable: Expandable?) {
+        vibratorHelper.vibrate(VibrationEffect.EFFECT_CLICK)
         handler.postDelayed({
             screenshotHelper.takeScreenshot(
                 WindowManager.TAKE_SCREENSHOT_FULLSCREEN,
