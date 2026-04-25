@@ -19,6 +19,7 @@ package com.android.systemui.qs.tiles;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.VibrationEffect;
 import android.service.quicksettings.Tile;
 import android.util.Log;
 import android.widget.Button;
@@ -41,6 +42,7 @@ import com.android.systemui.qs.QsEventLogger;
 import com.android.systemui.qs.logging.QSLogger;
 import com.android.systemui.qs.tileimpl.QSTileImpl;
 import com.android.systemui.res.R;
+import com.android.systemui.statusbar.VibratorHelper;
 
 import javax.inject.Inject;
 
@@ -53,6 +55,7 @@ public class QRCodeScannerTile extends QSTileImpl<QSTile.State> {
 
     private final CharSequence mLabel = mContext.getString(R.string.qr_code_scanner_title);
     private final QRCodeScannerController mQRCodeScannerController;
+    private final VibratorHelper mVibratorHelper;
 
     private final QRCodeScannerController.Callback mCallback =
             new QRCodeScannerController.Callback() {
@@ -72,10 +75,12 @@ public class QRCodeScannerTile extends QSTileImpl<QSTile.State> {
             StatusBarStateController statusBarStateController,
             ActivityStarter activityStarter,
             QSLogger qsLogger,
-            QRCodeScannerController qrCodeScannerController) {
+            QRCodeScannerController qrCodeScannerController,
+            VibratorHelper vibratorHelper) {
         super(host, uiEventLogger, backgroundLooper, mainHandler, falsingManager, metricsLogger,
                 statusBarStateController, activityStarter, qsLogger);
         mQRCodeScannerController = qrCodeScannerController;
+        mVibratorHelper = vibratorHelper;
         mQRCodeScannerController.observe(getLifecycle(), mCallback);
     }
 
@@ -101,6 +106,7 @@ public class QRCodeScannerTile extends QSTileImpl<QSTile.State> {
 
     @Override
     protected void handleClick(@Nullable Expandable expandable) {
+        mVibratorHelper.vibrate(VibrationEffect.EFFECT_CLICK);
         Intent intent = mQRCodeScannerController.getIntent();
         if (intent == null) {
             // This should never happen as the fact that we are handling clicks means that the
