@@ -59,6 +59,8 @@ class NetworkSpeedController @Inject constructor(
 
     private var lastTime = 0L
     private var lastTotalBytes = 0L
+    private var lastSpeed = -1L
+    private var lastVisible = false
 
     private val scope = CoroutineScope(bgDispatcher + SupervisorJob())
     private var speedUpdateJob: Job? = null
@@ -139,8 +141,15 @@ class NetworkSpeedController @Inject constructor(
             speed = (((totalBytes - lastTotalBytes) * 1000) / (currentTime - lastTime)).toLong()
         }
 
+        val visible = isConnected && isSwitchOn
+        if (speed == lastSpeed && visible == lastVisible) {
+            lastTime = currentTime
+            lastTotalBytes = totalBytes
+            return
+        }
+
         val iconState = NetworkSpeedIconState().apply {
-            setVisible(isConnected && isSwitchOn)
+            setVisible(visible)
             setSpeedText(speed)
             setSlot(SLOT_NETWORK_SPEED)
         }
@@ -154,6 +163,8 @@ class NetworkSpeedController @Inject constructor(
 
         lastTime = currentTime
         lastTotalBytes = totalBytes
+        lastSpeed = speed
+        lastVisible = visible
     }
 
     private fun getTotalBytes(): Long {
@@ -165,6 +176,8 @@ class NetworkSpeedController @Inject constructor(
     private fun reset() {
         lastTime = 0
         lastTotalBytes = 0
+        lastSpeed = -1L
+        lastVisible = false
     }
 
     fun isSwitchOn(): Boolean = isSwitchOn

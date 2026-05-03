@@ -88,9 +88,12 @@ class NetworkSpeedView @JvmOverloads constructor(
 
     private fun updateNetworkSpeed(fullSpeed: String, parts: List<String>) {
         if (parts.size < 2) return
-        speedNumber?.text = parts[0]
-        speedUnit?.text = parts[1]
-        requestLayout()
+        if (speedNumber?.text != parts[0]) {
+            speedNumber?.text = parts[0]
+        }
+        if (speedUnit?.text != parts[1]) {
+            speedUnit?.text = parts[1]
+        }
     }
 
     private fun speedChanged(newSpeed: Long) {
