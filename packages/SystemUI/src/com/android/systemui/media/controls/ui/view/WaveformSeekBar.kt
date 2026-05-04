@@ -28,14 +28,13 @@ import android.graphics.drawable.Drawable
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.widget.SeekBar
-import com.android.systemui.media.MediaSessionManager
 import kotlin.math.*
 
 class WaveformSeekBar @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = android.R.attr.seekBarStyle,
-) : SeekBar(context, attrs, defStyleAttr), MediaSessionManager.MediaDataListener {
+) : SeekBar(context, attrs, defStyleAttr) {
 
     private val density = resources.displayMetrics.density
     
@@ -119,20 +118,6 @@ class WaveformSeekBar @JvmOverloads constructor(
     
     fun regenerateWaveform(seed: Long = System.currentTimeMillis()) {
         invalidate()
-    }
-    
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        MediaSessionManager.get().addListener(this)
-    }
-    
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        MediaSessionManager.get().removeListener(this)
-    }
-    
-    override fun onMediaColorsChanged(color: Int) {
-        post { setWaveformColor(color) }
     }
     
     override fun onDraw(canvas: Canvas) {

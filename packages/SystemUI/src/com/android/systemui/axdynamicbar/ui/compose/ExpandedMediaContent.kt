@@ -1,8 +1,5 @@
 package com.android.systemui.axdynamicbar.ui.compose
 
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.LayerDrawable
-import android.util.TypedValue
 import android.widget.SeekBar
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -43,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +57,7 @@ import com.android.systemui.axdynamicbar.shared.IslandActions
 import com.android.systemui.axdynamicbar.model.IslandEvent
 import com.android.systemui.axdynamicbar.shared.*
 import com.android.systemui.media.controls.ui.drawable.SquigglyProgress
+import com.android.systemui.media.controls.ui.view.WaveformSeekBar
 import com.android.systemui.res.R
 import kotlinx.coroutines.delay
 
@@ -343,7 +342,7 @@ private fun MediaSeekBar(
 
     val displayMs = (displayFraction * durationMs).toLong()
     val accentArgb = accent.toArgb()
-    val trackAlphaArgb = accent.copy(alpha = AlphaSubtle).toArgb()
+    val waveformEnabled = rememberWaveformEnabled()
 
     Column(verticalArrangement = Arrangement.spacedBy(SpaceXs)) {
         Row(
@@ -406,110 +405,60 @@ private fun MediaSeekBar(
                 },
             contentAlignment = Alignment.Center,
         ) {
-            AndroidView(
-                factory = { context ->
-                    SeekBar(context).apply {
-                        max = 10_000
-                        splitTrack = false
-                        setPadding(0, 0, 0, 0)
-                        // Disable direct touch — Compose handles all gestures above
-                        isEnabled = false
-
-                        // Pill-shaped thumb
-                        thumb = createSeekBarThumb(context, accentArgb)
-                        thumbOffset = thumb.intrinsicWidth / 2
-
-                        // Set up SquigglyProgress on the progress layer
-                        val layer = (progressDrawable?.mutate() as? LayerDrawable)
-                        if (layer != null) {
-                            layer.findDrawableByLayerId(android.R.id.background)
-                                ?.mutate()?.setTint(trackAlphaArgb)
-
-                            layer.findDrawableByLayerId(android.R.id.secondaryProgress)
-                                ?.mutate()?.setTint(
-                                    com.android.internal.graphics.ColorUtils
-                                        .setAlphaComponent(accentArgb, 60)
-                                )
-
-                            val squiggle = SquigglyProgress().apply {
-                                waveLength = context.resources.getDimensionPixelSize(
-                                    R.dimen.qs_media_seekbar_progress_wavelength
-                                ).toFloat()
-                                lineAmplitude = context.resources.getDimensionPixelSize(
-                                    R.dimen.qs_media_seekbar_progress_amplitude
-                                ).toFloat()
-                                phaseSpeed = context.resources.getDimensionPixelSize(
-                                    R.dimen.qs_media_seekbar_progress_phase
-                                ).toFloat()
-                                strokeWidth = context.resources.getDimensionPixelSize(
-                                    R.dimen.qs_media_seekbar_progress_stroke_width
-                                ).toFloat()
-                                setTint(accentArgb)
-                                drawRemainingLine = false
-                                transitionEnabled = false
-                                animate = false
+            key(waveformEnabled) {
+                AndroidView(
+                    factory = { context ->
+                        if (waveformEnabled) {
+                            WaveformSeekBar(context).apply {
+                                max = 10_000
+                                setPadding(0, 0, 0, 0)
+                                isEnabled = false
+                                setWaveformColor(accentArgb)
+                                setThumbColor(accentArgb)
                             }
-                            layer.setDrawableByLayerId(android.R.id.progress, squiggle)
-                            progressDrawable = layer
+                        } else {
+                            SeekBar(context).apply {
+                                max = 10_000
+                                setPadding(0, 0, 0, 0)
+                                isEnabled = false
+                                val squiggly = SquigglyProgress().apply {
+                                    waveLength = context.resources.getDimensionPixelSize(R.dimen.qs_media_seekbar_progress_wavelength).toFloat()
+                                    lineAmplitude = context.resources.getDimensionPixelSize(R.dimen.qs_media_seekbar_progress_amplitude).toFloat()
+                                    phaseSpeed = context.resources.getDimensionPixelSize(R.dimen.qs_media_seekbar_progress_phase).toFloat()
+                                    strokeWidth = context.resources.getDimensionPixelSize(R.dimen.qs_media_seekbar_progress_stroke_width).toFloat()
+                                    transitionEnabled = false
+                                    setTint(accentArgb)
+                                }
+                                progressDrawable = squiggly
+                                thumb?.setTint(accentArgb)
+                            }
                         }
-                    }
-                },
-                update = { bar ->
-                    val target = (displayFraction * 10_000f).toInt().coerceIn(0, 10_000)
-                    bar.progress = target
+                    },
+                    update = { bar ->
+                        val target = (displayFraction * 10_000f).toInt().coerceIn(0, 10_000)
+                        bar.progress = target
 
-                    // Re-tint thumb for accent color changes (e.g. track switch)
-                    (bar.thumb as? GradientDrawable)?.setColor(accentArgb)
-
-                    val alpha = if (isPlaying) 255 else (255 * 0.55f).toInt()
-                    bar.thumb?.alpha = alpha
-
-                    val layer = bar.progressDrawable as? LayerDrawable
-
-                    // Re-tint track colors
-                    layer?.findDrawableByLayerId(android.R.id.background)
-                        ?.setTint(trackAlphaArgb)
-                    layer?.findDrawableByLayerId(android.R.id.secondaryProgress)
-                        ?.setTint(
-                            com.android.internal.graphics.ColorUtils
-                                .setAlphaComponent(accentArgb, 60)
-                        )
-
-                    val squiggle = layer
-                        ?.findDrawableByLayerId(android.R.id.progress) as? SquigglyProgress
-
-                    squiggle?.apply {
-                        setTint(accentArgb)
-                        setAlpha(alpha)
-                        animate = isPlaying && !isScrubbing
-                    }
-
-                    layer?.alpha = alpha
-                },
-                modifier = Modifier.fillMaxWidth().height(SeekBarHeight),
-            )
+                        if (bar is WaveformSeekBar) {
+                            bar.setWaveformColor(accentArgb)
+                            bar.setThumbColor(accentArgb)
+                            if (isPlaying && !isScrubbing) {
+                                bar.startWaveAnimation()
+                            } else {
+                                bar.stopWaveAnimation()
+                            }
+                        } else {
+                            val squiggly = bar.progressDrawable as? SquigglyProgress
+                            squiggly?.let {
+                                it.setTint(accentArgb)
+                                it.animate = isPlaying && !isScrubbing
+                            }
+                            bar.thumb?.setTint(accentArgb)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(SeekBarHeight),
+                )
+            }
         }
-    }
-}
-
-/**
- * Creates a pill-shaped thumb drawable for the seekbar.
- */
-private fun createSeekBarThumb(context: android.content.Context, tintColor: Int): GradientDrawable {
-    val wPx = TypedValue.applyDimension(
-        TypedValue.COMPLEX_UNIT_DIP, 4f, context.resources.displayMetrics
-    ).toInt().coerceAtLeast(1)
-    val hPx = TypedValue.applyDimension(
-        TypedValue.COMPLEX_UNIT_DIP, 16f, context.resources.displayMetrics
-    ).toInt().coerceAtLeast(1)
-    val radiusPx = TypedValue.applyDimension(
-        TypedValue.COMPLEX_UNIT_DIP, 16f, context.resources.displayMetrics
-    )
-    return GradientDrawable().apply {
-        shape = GradientDrawable.RECTANGLE
-        setSize(wPx, hPx)
-        cornerRadius = radiusPx
-        setColor(tintColor)
     }
 }
 

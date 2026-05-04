@@ -1,6 +1,12 @@
 package com.android.systemui.axdynamicbar.shared
 
 import android.app.ActivityOptions
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
 import com.android.systemui.res.R
 import android.app.PendingIntent
 import android.content.Context
@@ -429,6 +435,38 @@ internal fun ExpressivePillButton(
     }
 }
 
+@Composable
+internal fun rememberWaveformEnabled(): Boolean {
+    val context = LocalContext.current
+    var enabled by remember {
+        mutableStateOf(
+            Settings.System.getInt(
+                context.contentResolver,
+                Settings.System.MEDIA_WAVEFORM_SEEKBAR,
+                0
+            ) == 1
+        )
+    }
+
+    DisposableEffect(context) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                enabled = Settings.System.getInt(
+                    context.contentResolver,
+                    Settings.System.MEDIA_WAVEFORM_SEEKBAR,
+                    0
+                ) == 1
+            }
+        }
+        val uri = Settings.System.getUriFor(Settings.System.MEDIA_WAVEFORM_SEEKBAR)
+        context.contentResolver.registerContentObserver(uri, false, observer)
+        onDispose {
+            context.contentResolver.unregisterContentObserver(observer)
+        }
+    }
+    return enabled
+}
+
 internal data class MediaProgress(val progress: Float, val positionMs: Long)
 
 @Composable
@@ -557,4 +595,3 @@ internal fun PendingIntent.sendWithBal(context: Context, fillIntent: Intent? = n
     )
     send(context, 0, fillIntent, null, null, null, options.toBundle())
 }
-
