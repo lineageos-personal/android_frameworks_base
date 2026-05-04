@@ -25,8 +25,8 @@ import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.RectF
 import android.graphics.drawable.Drawable
+import android.os.SystemClock
 import android.util.AttributeSet
-import android.view.animation.LinearInterpolator
 import android.widget.SeekBar
 import com.android.systemui.media.MediaSessionManager
 import kotlin.math.*
@@ -76,7 +76,6 @@ class WaveformSeekBar @JvmOverloads constructor(
     
     private var wavePhase = 0f
     private var waveAmplitudeMultiplier = 0f
-    private var waveAnimator: ValueAnimator? = null
     private var fadeAnimator: ValueAnimator? = null
     var isPlaying = false
         private set
@@ -88,7 +87,7 @@ class WaveformSeekBar @JvmOverloads constructor(
     }
     
     fun startWaveAnimation() {
-        if (isPlaying && waveAnimator?.isRunning == true) return
+        if (isPlaying) return
         isPlaying = true
         
         fadeAnimator?.cancel()
@@ -100,24 +99,12 @@ class WaveformSeekBar @JvmOverloads constructor(
             }
             start()
         }
-        
-        waveAnimator?.cancel()
-        waveAnimator = ValueAnimator.ofFloat(0f, (2 * Math.PI).toFloat()).apply {
-            duration = 3500L
-            repeatCount = ValueAnimator.INFINITE
-            interpolator = LinearInterpolator()
-            addUpdateListener { 
-                wavePhase = it.animatedValue as Float
-                invalidate()
-            }
-            start()
-        }
+        invalidate()
     }
     
     fun stopWaveAnimation() {
+        if (!isPlaying) return
         isPlaying = false
-        waveAnimator?.cancel()
-        waveAnimator = null
         
         fadeAnimator?.cancel()
         fadeAnimator = ValueAnimator.ofFloat(waveAmplitudeMultiplier, 0f).apply {
@@ -137,26 +124,11 @@ class WaveformSeekBar @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         MediaSessionManager.get().addListener(this)
-        
-        if (isPlaying && waveAnimator?.isRunning != true) {
-            waveAnimator?.cancel()
-            waveAnimator = ValueAnimator.ofFloat(0f, (2 * Math.PI).toFloat()).apply {
-                duration = 3500L
-                repeatCount = ValueAnimator.INFINITE
-                interpolator = LinearInterpolator()
-                addUpdateListener { 
-                    wavePhase = it.animatedValue as Float
-                    invalidate()
-                }
-                start()
-            }
-        }
     }
     
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         MediaSessionManager.get().removeListener(this)
-        waveAnimator?.cancel()
     }
     
     override fun onMediaColorsChanged(color: Int) {
@@ -164,6 +136,11 @@ class WaveformSeekBar @JvmOverloads constructor(
     }
     
     override fun onDraw(canvas: Canvas) {
+        if (isPlaying || waveAmplitudeMultiplier > 0f) {
+            wavePhase = (SystemClock.uptimeMillis() % 3500) / 3500f * (2 * PI).toFloat()
+            invalidate()
+        }
+
         val width = width.toFloat()
         val height = height.toFloat()
         val pLeft = paddingLeft.toFloat()
