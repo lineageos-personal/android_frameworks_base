@@ -419,8 +419,11 @@ private fun MediaSeekBar(
                         } else {
                             SeekBar(context).apply {
                                 max = 10_000
+                                splitTrack = false
                                 setPadding(0, 0, 0, 0)
                                 isEnabled = false
+                                thumb = context.getDrawable(R.drawable.media_seekbar_thumb)?.mutate()
+                                thumbOffset = thumb.intrinsicWidth / 2
                                 val squiggly = SquigglyProgress().apply {
                                     waveLength = context.resources.getDimensionPixelSize(R.dimen.qs_media_seekbar_progress_wavelength).toFloat()
                                     lineAmplitude = context.resources.getDimensionPixelSize(R.dimen.qs_media_seekbar_progress_amplitude).toFloat()
@@ -448,11 +451,14 @@ private fun MediaSeekBar(
                             }
                         } else {
                             val squiggly = bar.progressDrawable as? SquigglyProgress
+                            val alpha = if (isPlaying) 255 else (255 * 0.55f).toInt()
                             squiggly?.let {
                                 it.setTint(accentArgb)
+                                it.setAlpha(alpha)
                                 it.animate = isPlaying && !isScrubbing
                             }
                             bar.thumb?.setTint(accentArgb)
+                            bar.thumb?.alpha = alpha
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(SeekBarHeight),
