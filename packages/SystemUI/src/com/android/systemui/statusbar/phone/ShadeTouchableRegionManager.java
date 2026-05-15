@@ -55,6 +55,7 @@ import com.android.systemui.statusbar.notification.headsup.HeadsUpManager;
 import com.android.systemui.statusbar.notification.headsup.OnHeadsUpChangedListener;
 import com.android.systemui.statusbar.policy.ConfigurationController;
 import com.android.systemui.statusbar.policy.ConfigurationController.ConfigurationListener;
+import com.android.systemui.statusbar.policy.KeyguardStateController;
 import com.android.systemui.util.kotlin.JavaAdapter;
 
 import java.io.PrintWriter;
@@ -80,6 +81,7 @@ public final class ShadeTouchableRegionManager implements Dumpable {
     private final ShadeInteractor mShadeInteractor;
     private final PrimaryBouncerInteractor mPrimaryBouncerInteractor;
     private final AlternateBouncerInteractor mAlternateBouncerInteractor;
+    private final KeyguardStateController mKeyguardStateController;
     private final Provider<ShadeModeInteractor> mShadeModeInteractorProvider;
     private final Provider<DesktopInteractor> mDesktopInteractorProvider;
 
@@ -116,6 +118,7 @@ public final class ShadeTouchableRegionManager implements Dumpable {
             UnlockedScreenOffAnimationController unlockedScreenOffAnimationController,
             PrimaryBouncerInteractor primaryBouncerInteractor,
             AlternateBouncerInteractor alternateBouncerInteractor,
+            KeyguardStateController keyguardStateController,
             CommunalSceneInteractor communalSceneInteractor,
             Provider<ShadeModeInteractor> shadeModeInteractor,
             Provider<DesktopInteractor> desktopInteractor
@@ -193,6 +196,13 @@ public final class ShadeTouchableRegionManager implements Dumpable {
 
         mPrimaryBouncerInteractor = primaryBouncerInteractor;
         mAlternateBouncerInteractor = alternateBouncerInteractor;
+        mKeyguardStateController = keyguardStateController;
+        mKeyguardStateController.addCallback(new KeyguardStateController.Callback() {
+            @Override
+            public void onKeyguardShowingChanged() {
+                updateTouchableRegion();
+            }
+        });
         mOnComputeInternalInsetsListener = this::onComputeInternalInsets;
     }
 
@@ -446,6 +456,8 @@ public final class ShadeTouchableRegionManager implements Dumpable {
         // since we don't want stray touches to go through the light reveal scrim to whatever is
         // underneath.
         return mIsAnyShadeExpanded
+                || (mKeyguardStateController.isShowing()
+                        && !mKeyguardStateController.isKeyguardGoingAway())
                 || (SceneContainerFlag.isEnabled()
                 && (!mIsSceneContainerUiEmpty || mIsRemoteUserInteractionOngoing))
                 || mPrimaryBouncerInteractor.isShowing().getValue()
