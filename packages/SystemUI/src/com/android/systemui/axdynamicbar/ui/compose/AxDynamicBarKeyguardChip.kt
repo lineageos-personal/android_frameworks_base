@@ -8,6 +8,7 @@ import com.android.compose.animation.rememberExpandableController
 import com.android.systemui.animation.Expandable as SystemUiExpandable
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -21,12 +22,16 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -138,8 +143,34 @@ fun AxDynamicBarKeyguardChip(
         }
         AnimatedVisibility(
             visibleState = expandedVisibleState,
-            enter = fadeIn(motionScheme.defaultEffectsSpec()),
-            exit = fadeOut(tween(durationMillis = 250)),
+            enter = fadeIn(tween(durationMillis = 240)) +
+                scaleIn(
+                    initialScale = 0.9f,
+                    animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+                ) +
+                expandVertically(
+                    expandFrom = Alignment.CenterVertically,
+                    initialHeight = { it / 2 },
+                    animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+                ) +
+                slideInVertically(
+                    initialOffsetY = { it / 6 },
+                    animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+                ),
+            exit = fadeOut(tween(durationMillis = 160)) +
+                scaleOut(
+                    targetScale = 0.94f,
+                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                ) +
+                shrinkVertically(
+                    shrinkTowards = Alignment.CenterVertically,
+                    targetHeight = { it / 2 },
+                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                ) +
+                slideOutVertically(
+                    targetOffsetY = { it / 8 },
+                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                ),
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.Center),
@@ -156,13 +187,18 @@ fun AxDynamicBarKeyguardChip(
         }
 
         AnimatedVisibility(
-            visible = isOnKeyguard && isEnabled && isKeyguardEnabled && !isKeyguardExpanded,
-            enter = fadeIn(tween(durationMillis = 200, delayMillis = 300)) +
+            visible =
+                isOnKeyguard &&
+                    isEnabled &&
+                    isKeyguardEnabled &&
+                    !expandedVisibleState.currentState &&
+                    !expandedVisibleState.targetState,
+            enter = fadeIn(tween(durationMillis = 140, delayMillis = 40)) +
                 scaleIn(
-                    initialScale = 0.9f,
-                    animationSpec = tween(durationMillis = 200, delayMillis = 300),
+                    initialScale = 0.96f,
+                    animationSpec = tween(durationMillis = 140, delayMillis = 40),
                 ),
-            exit = fadeOut(motionScheme.fastEffectsSpec()) + scaleOut(targetScale = 0.9f, animationSpec = motionScheme.fastSpatialSpec()),
+            exit = ExitTransition.None,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .pointerInput(viewModel) {

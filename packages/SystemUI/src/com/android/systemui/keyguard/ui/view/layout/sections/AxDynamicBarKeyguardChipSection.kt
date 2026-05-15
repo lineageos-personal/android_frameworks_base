@@ -4,6 +4,7 @@ import android.content.Context
 import android.transition.TransitionManager
 import android.view.View
 import android.view.ViewGroup
+import com.android.app.animation.Interpolators
 import com.android.axion.compose.host.AxComposeView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
@@ -29,6 +30,10 @@ import kotlinx.coroutines.launch
 
 private const val CHIP_ABOVE_LOCK_MARGIN_DP = 12f
 private const val EXPANDED_BOTTOM_PROTECTION_DP = 16f
+private const val CLOCK_FADE_OUT_DURATION_MS = 133L
+private const val CLOCK_FADE_IN_DURATION_MS = 167L
+private const val CLOCK_EXPAND_FADE_IN_DELAY_MS = 50L
+private const val CLOCK_COLLAPSE_FADE_IN_DELAY_MS = 0L
 private const val UNSET = -1
 
 private val HIDDEN_VIEW_IDS = listOf(
@@ -54,6 +59,8 @@ constructor(
     private var expansionHandle: DisposableHandle? = null
     private var enforceAction: Runnable? = null
     private var clockSizeBeforeExpansion: ClockSize? = null
+    private var clockAnimationToken = 0
+    private var animatedClockTarget: ClockSize? = null
 
     override fun addViews(constraintLayout: ConstraintLayout) {
         val composeView = AxComposeView(context).apply { id = chipViewId }
@@ -96,8 +103,8 @@ constructor(
                     viewModel.isKeyguardExpanded.collectLatest { expanded ->
                         if (expanded) {
                             clockInteractor.clockSize.collect { size ->
-                                if (size != ClockSize.SMALL) {
-                                    clockInteractor.setClockSize(ClockSize.SMALL)
+                                if (size != ClockSize.SMALL && clockSizeBeforeExpansion != null) {
+                                    setClockSizeImmediately(constraintLayout, ClockSize.SMALL)
                                 }
                             }
                         }
@@ -121,15 +128,112 @@ constructor(
             if (clockSizeBeforeExpansion == null) {
                 clockSizeBeforeExpansion = clockInteractor.clockSize.value
             }
-            if (clockInteractor.clockSize.value != ClockSize.SMALL) {
-                clockInteractor.setClockSize(ClockSize.SMALL)
-            }
             setHiddenViewsVisibility(constraintLayout, View.INVISIBLE)
             applyExpandedLp(composeView)
+            if (clockInteractor.clockSize.value != ClockSize.SMALL) {
+                setClockSizeWithFade(
+                    constraintLayout,
+                    ClockSize.SMALL,
+                    CLOCK_EXPAND_FADE_IN_DELAY_MS,
+                )
+            }
         } else {
-            clockSizeBeforeExpansion?.let { clockInteractor.setClockSize(it) }
+            clockSizeBeforeExpansion?.let {
+                setClockSizeWithFade(
+                    constraintLayout,
+                    it,
+                    CLOCK_COLLAPSE_FADE_IN_DELAY_MS,
+                )
+            }
             clockSizeBeforeExpansion = null
         }
+    }
+
+    private fun setClockSizeWithFade(
+        constraintLayout: ConstraintLayout,
+        targetSize: ClockSize,
+        fadeInDelayMs: Long,
+    ) {
+        val currentSize = clockInteractor.clockSize.value
+        if (currentSize == targetSize) return
+
+        val token = ++clockAnimationToken
+        animatedClockTarget = targetSize
+        val fromClock = clockViewForSize(constraintLayout, currentSize)
+        fromClock?.animate()?.cancel()
+        fromClock
+            ?.animate()
+            ?.alpha(0f)
+            ?.setDuration(CLOCK_FADE_OUT_DURATION_MS)
+            ?.setInterpolator(Interpolators.LINEAR)
+            ?.withEndAction {
+                if (token == clockAnimationToken) {
+                    switchClockSizeAndFadeIn(constraintLayout, targetSize, token, fadeInDelayMs)
+                }
+            }
+            ?.start()
+            ?: switchClockSizeAndFadeIn(constraintLayout, targetSize, token, fadeInDelayMs)
+    }
+
+    private fun switchClockSizeAndFadeIn(
+        constraintLayout: ConstraintLayout,
+        targetSize: ClockSize,
+        token: Int,
+        fadeInDelayMs: Long,
+    ) {
+        clockInteractor.setClockSize(targetSize)
+        val toClock =
+            clockViewForSize(constraintLayout, targetSize)
+                ?: run {
+                    if (token == clockAnimationToken) {
+                        animatedClockTarget = null
+                    }
+                    return
+                }
+        toClock.animate().cancel()
+        toClock.alpha = 0f
+        toClock.postOnAnimation {
+            if (token != clockAnimationToken) return@postOnAnimation
+            toClock.animate().cancel()
+            toClock.alpha = 0f
+            toClock.animate()
+                .alpha(1f)
+                .setStartDelay(fadeInDelayMs)
+                .setDuration(CLOCK_FADE_IN_DURATION_MS)
+                .setInterpolator(Interpolators.LINEAR_OUT_SLOW_IN)
+                .withEndAction {
+                    if (token == clockAnimationToken) {
+                        animatedClockTarget = null
+                    }
+                }
+                .start()
+        }
+    }
+
+    private fun setClockSizeImmediately(
+        constraintLayout: ConstraintLayout,
+        targetSize: ClockSize,
+    ) {
+        val currentSize = clockInteractor.clockSize.value
+        if (currentSize == targetSize) return
+
+        clockAnimationToken++
+        animatedClockTarget = null
+        clockViewForSize(constraintLayout, currentSize)?.animate()?.cancel()
+        clockInteractor.setClockSize(targetSize)
+        clockViewForSize(constraintLayout, targetSize)?.let { clock ->
+            clock.animate().cancel()
+            clock.alpha = 1f
+        }
+    }
+
+    private fun clockViewForSize(constraintLayout: ConstraintLayout, size: ClockSize): View? {
+        val id =
+            when (size) {
+                ClockSize.SMALL -> ClockViewIds.LOCKSCREEN_CLOCK_VIEW_SMALL
+                ClockSize.LARGE -> ClockViewIds.LOCKSCREEN_CLOCK_VIEW_LARGE
+            }
+        return constraintLayout.rootView.findViewById(id)
     }
 
     private fun rebindPreDrawAction(constraintLayout: ConstraintLayout, expanded: Boolean) {
