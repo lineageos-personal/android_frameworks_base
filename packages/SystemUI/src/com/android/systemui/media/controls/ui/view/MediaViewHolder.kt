@@ -129,6 +129,7 @@ class MediaViewHolder constructor(itemView: View) {
                 max = oldMax
                 isEnabled = oldEnabled
                 layoutDirection = View.LAYOUT_DIRECTION_LTR
+                setThumbShadowEnabled(false)
             }
 
             parent.addView(waveformSeekBar, index)

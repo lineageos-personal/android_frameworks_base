@@ -75,6 +75,7 @@ class WaveformSeekBar @JvmOverloads constructor(
     
     private var wavePhase = 0f
     private var waveAmplitudeMultiplier = 0f
+    private var thumbShadowEnabled = true
     private var fadeAnimator: ValueAnimator? = null
     var isPlaying = false
         private set
@@ -152,7 +153,9 @@ class WaveformSeekBar @JvmOverloads constructor(
                 canvas.drawRoundRect(progressRect, cornerRadius, cornerRadius, progressPaint)
             }
         }
-        canvas.drawCircle(progressX, centerY + 2 * density, thumbRadius, thumbShadowPaint)
+        if (thumbShadowEnabled) {
+            canvas.drawCircle(progressX, centerY + 2 * density, thumbRadius, thumbShadowPaint)
+        }
         canvas.drawCircle(progressX, centerY, thumbRadius, thumbPaint)
     }
     
@@ -288,8 +291,23 @@ class WaveformSeekBar @JvmOverloads constructor(
     
     fun setThumbColor(color: Int) {
         thumbPaint.color = color
-        thumbPaint.setShadowLayer(4f * density, 0f, 2f * density, Color.argb(80, 0, 0, 0))
+        updateThumbShadowLayer()
         invalidate()
+    }
+
+    fun setThumbShadowEnabled(enabled: Boolean) {
+        if (thumbShadowEnabled == enabled) return
+        thumbShadowEnabled = enabled
+        updateThumbShadowLayer()
+        invalidate()
+    }
+
+    private fun updateThumbShadowLayer() {
+        if (thumbShadowEnabled) {
+            thumbPaint.setShadowLayer(4f * density, 0f, 2f * density, Color.argb(80, 0, 0, 0))
+        } else {
+            thumbPaint.clearShadowLayer()
+        }
     }
     
     private class TransparentDrawable : Drawable() {

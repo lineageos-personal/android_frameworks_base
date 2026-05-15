@@ -415,6 +415,7 @@ private fun MediaSeekBar(
                                 isEnabled = false
                                 setWaveformColor(accentArgb)
                                 setThumbColor(accentArgb)
+                                setThumbShadowEnabled(false)
                             }
                         } else {
                             SeekBar(context).apply {
