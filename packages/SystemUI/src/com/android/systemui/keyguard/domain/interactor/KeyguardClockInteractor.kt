@@ -118,13 +118,15 @@ constructor(
                 shadeModeInteractor.isFullWidthShade,
                 areAnyNotificationsPresent,
                 mediaCarouselInteractor.hasActiveMedia,
+                mediaCarouselInteractor.allowMediaOnLockscreen,
                 keyguardInteractor.isDozing,
-            ) { forcedClockSize, isFullWidthShade, hasNotifs, hasMedia, isDozing ->
+            ) { forcedClockSize, isFullWidthShade, hasNotifs, hasMedia, allowMedia, isDozing ->
+                val visibleMedia = hasMedia && allowMedia
                 when {
                     forcedClockSize != null -> forcedClockSize
-                    isFullWidthShade && (hasNotifs || hasMedia) -> ClockSize.SMALL
+                    isFullWidthShade && (hasNotifs || visibleMedia) -> ClockSize.SMALL
                     isFullWidthShade -> ClockSize.LARGE
-                    hasMedia && !isDozing -> ClockSize.SMALL
+                    visibleMedia && !isDozing -> ClockSize.SMALL
                     else -> ClockSize.LARGE
                 }
             }

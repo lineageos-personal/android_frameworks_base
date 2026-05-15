@@ -53,6 +53,7 @@ constructor(
     private var bindHandle: DisposableHandle? = null
     private var expansionHandle: DisposableHandle? = null
     private var enforceAction: Runnable? = null
+    private var clockSizeBeforeExpansion: ClockSize? = null
 
     override fun addViews(constraintLayout: ConstraintLayout) {
         val composeView = AxComposeView(context).apply { id = chipViewId }
@@ -102,10 +103,8 @@ constructor(
                         }
                     }
                 }
-                combine(viewModel.isKeyguardExpanded, viewModel.isLowUdfps) { expanded, lowUdfps ->
-                    expanded to lowUdfps
-                }.collect { (expanded, lowUdfps) ->
-                    onExpandedStateChanged(constraintLayout, composeView, expanded, lowUdfps)
+                viewModel.isKeyguardExpanded.collect { expanded ->
+                    onExpandedStateChanged(constraintLayout, composeView, expanded)
                 }
             }
         }
@@ -115,13 +114,21 @@ constructor(
         constraintLayout: ConstraintLayout,
         composeView: View,
         expanded: Boolean,
-        lowUdfps: Boolean,
     ) {
         rebindPreDrawAction(constraintLayout, expanded)
         TransitionManager.endTransitions(constraintLayout)
         if (expanded) {
+            if (clockSizeBeforeExpansion == null) {
+                clockSizeBeforeExpansion = clockInteractor.clockSize.value
+            }
+            if (clockInteractor.clockSize.value != ClockSize.SMALL) {
+                clockInteractor.setClockSize(ClockSize.SMALL)
+            }
             setHiddenViewsVisibility(constraintLayout, View.INVISIBLE)
             applyExpandedLp(composeView)
+        } else {
+            clockSizeBeforeExpansion?.let { clockInteractor.setClockSize(it) }
+            clockSizeBeforeExpansion = null
         }
     }
 
@@ -238,6 +245,8 @@ constructor(
         bindHandle?.dispose()
         bindHandle = null
         indicationController.setSuppressIndication(false)
+        clockSizeBeforeExpansion?.let { clockInteractor.setClockSize(it) }
+        clockSizeBeforeExpansion = null
         constraintLayout.removeView(chipViewId)
     }
 }

@@ -68,6 +68,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.PowerManager;
 import android.os.Trace;
+import android.os.UserHandle;
+import android.provider.Settings;
 import android.util.IndentingPrintWriter;
 import android.util.Log;
 import android.util.MathUtils;
@@ -473,6 +475,7 @@ public final class NotificationPanelViewController implements
 
     private final CommandQueue mCommandQueue;
     private final MediaDataManager mMediaDataManager;
+    private final ContentObserver mLockscreenMediaSettingObserver;
     @PanelState
     private int mCurrentPanelState = STATE_CLOSED;
     @Deprecated // Use SysUIStateInteractor instead
@@ -754,6 +757,18 @@ public final class NotificationPanelViewController implements
         mKeyguardStatusBarViewComponentFactory = keyguardStatusBarViewComponentFactory;
         mDepthController = notificationShadeDepthController;
         mContentResolver = contentResolver;
+        mLockscreenMediaSettingObserver =
+                new ContentObserver(null) {
+                    @Override
+                    public void onChange(boolean selfChange) {
+                        updateClockAppearance();
+                    }
+                };
+        mContentResolver.registerContentObserver(
+                Settings.Secure.getUriFor(Settings.Secure.MEDIA_CONTROLS_LOCK_SCREEN),
+                false,
+                mLockscreenMediaSettingObserver,
+                UserHandle.USER_ALL);
         mFragmentService = fragmentService;
         mStatusBarService = statusBarService;
         mSplitShadeStateController = splitShadeStateController;
@@ -1231,8 +1246,7 @@ public final class NotificationPanelViewController implements
 
     private ClockSize computeDesiredClockSizeForSplitShade() {
         // Media is not visible to the user on AOD.
-        boolean isMediaVisibleToUser =
-                mMediaDataManager.hasActiveMedia() && !isOnAod();
+        boolean isMediaVisibleToUser = hasVisibleLockscreenMedia() && !isOnAod();
         if (isMediaVisibleToUser) {
             // When media is visible, it overlaps with the large clock. Use small clock instead.
             return ClockSize.SMALL;
@@ -1273,7 +1287,19 @@ public final class NotificationPanelViewController implements
 
     private boolean hasVisibleNotifications() {
         return mActiveNotificationsInteractor.getAreAnyNotificationsPresentValue()
-                || mMediaDataManager.hasActiveMedia();
+                || hasVisibleLockscreenMedia();
+    }
+
+    private boolean hasVisibleLockscreenMedia() {
+        return isLockscreenMediaEnabled() && mMediaDataManager.hasActiveMedia();
+    }
+
+    private boolean isLockscreenMediaEnabled() {
+        return Settings.Secure.getIntForUser(
+                mContentResolver,
+                Settings.Secure.MEDIA_CONTROLS_LOCK_SCREEN,
+                1,
+                UserHandle.USER_CURRENT) != 0;
     }
 
     @Override
