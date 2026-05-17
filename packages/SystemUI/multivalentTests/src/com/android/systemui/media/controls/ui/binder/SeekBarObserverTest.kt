@@ -170,8 +170,8 @@ class SeekBarObserverTest : SysuiTestCase() {
         val data =
             SeekBarViewModel.Progress(true, true, isPlaying, isScrubbing, 3000, 120000, false)
         observer.onChanged(data)
-        // THEN progress drawable is not animating
-        verify(mockSquigglyProgress).animate = false
+        // THEN progress drawable keeps animating, matching waveform behavior
+        verify(mockSquigglyProgress).animate = true
     }
 
     @Test

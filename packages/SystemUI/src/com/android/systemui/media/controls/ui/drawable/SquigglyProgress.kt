@@ -50,7 +50,6 @@ class SquigglyProgress : Drawable() {
     private var heightFraction = 0f
     private var heightAnimator: ValueAnimator? = null
     private var phaseOffset = 0f
-    private var lastFrameTime = -1L
 
     /* distance over which amplitude drops to zero, measured in wavelengths */
     private val transitionPeriods = 1.5f
@@ -98,9 +97,6 @@ class SquigglyProgress : Drawable() {
                 return
             }
             field = value
-            if (field) {
-                lastFrameTime = SystemClock.uptimeMillis()
-            }
             heightAnimator?.cancel()
             heightAnimator =
                 ValueAnimator.ofFloat(heightFraction, if (animate) 1f else 0f).apply {
@@ -134,10 +130,13 @@ class SquigglyProgress : Drawable() {
     private fun drawTraced(canvas: Canvas) {
         if (animate) {
             invalidateSelf()
-            val now = SystemClock.uptimeMillis()
-            phaseOffset += (now - lastFrameTime) / 1000f * phaseSpeed
-            phaseOffset %= waveLength
-            lastFrameTime = now
+            phaseOffset =
+                if (waveLength != 0f) {
+                    ((SystemClock.uptimeMillis().toDouble() / 1000.0 * phaseSpeed) % waveLength)
+                        .toFloat()
+                } else {
+                    0f
+                }
         }
 
         val progress = level / 10_000f
