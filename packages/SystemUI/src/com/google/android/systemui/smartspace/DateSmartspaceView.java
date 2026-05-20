@@ -293,6 +293,11 @@ public class DateSmartspaceView extends LinearLayout
             mNextAlarmTextView.setTextColor(mCurrentTextColor);
             mNextAlarmIconDrawable.setTint(mCurrentTextColor);
         }
+        DoubleShadowTextView lockscreenWeatherText =
+                findViewById(R.id.lockscreen_omnijaws_weather_text);
+        if (lockscreenWeatherText != null) {
+            lockscreenWeatherText.setTextColor(mCurrentTextColor);
+        }
         if (mDndImageView == null || mDndImageView.getDrawable() == null) {
             return;
         }

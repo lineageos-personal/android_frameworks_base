@@ -340,6 +340,7 @@ constructor(
     }
 
     /** Constructs the weather view and connects it to the smartspace service. */
+    @Suppress("UNUSED_PARAMETER")
     fun buildAndConnectWeatherView(context: Context?, isLargeClock: Boolean): View? {
         execution.assertIsMainThread()
 
@@ -350,16 +351,7 @@ constructor(
             throw RuntimeException("Cannot build weather view when not decoupled")
         }
 
-        val view =
-            buildView(
-                surfaceName = SmartspaceViewModel.SURFACE_WEATHER_VIEW,
-                context = context,
-                plugin = weatherPlugin,
-                isLargeClock = isLargeClock,
-            )
-        connectSession()
-
-        return view
+        return LockscreenOmniJawsWeatherView(context ?: this.context, handler, activityStarter)
     }
 
     /** Constructs the smartspace view and connects it to the smartspace service. */
