@@ -90,12 +90,7 @@ fun RingerRow(
     val indicatorX = ringerIndicatorX(panelWidth, modeCount, activeIndex)
 
     val motionScheme = MaterialTheme.motionScheme
-    val animatable = remember { Animatable(RingerRowOuterPadding.value) }
-
-    LaunchedEffect(Unit) {
-        animatable.snapTo(RingerRowOuterPadding.value)
-        animatable.animateTo(indicatorX.value, motionScheme.defaultSpatialSpec())
-    }
+    val animatable = remember { Animatable(indicatorX.value) }
 
     LaunchedEffect(indicatorX) {
         animatable.animateTo(indicatorX.value, motionScheme.defaultSpatialSpec())

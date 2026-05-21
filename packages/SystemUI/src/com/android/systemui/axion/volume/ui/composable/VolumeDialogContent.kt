@@ -365,6 +365,8 @@ private fun ContentScope.ExpandedPanelContent(
     val streamItems = sliderItems.filterIsInstance<VolumeSliderItem.Stream>()
     val streamCount = currStreamCount.coerceIn(1, MaxVisibleSliders)
     val panelWidth = (8 + 56 * streamCount).dp
+    val collapseButtonEdgePadding =
+        SliderRowHorizontalPadding + (SliderWidthExpanded - SliderIconContainerSize) / 2
 
     val surfaceBright = MaterialTheme.colorScheme.surfaceBright
 
@@ -413,14 +415,7 @@ private fun ContentScope.ExpandedPanelContent(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(SeeMoreHeight)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        viewModel.rescheduleTimeout()
-                        viewModel.onSeeMoreClick()
-                    },
+                    .height(SeeMoreHeight),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -428,7 +423,41 @@ private fun ContentScope.ExpandedPanelContent(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        viewModel.rescheduleTimeout()
+                        viewModel.onSeeMoreClick()
+                    },
                 )
+
+                Box(
+                    modifier = Modifier
+                        .align(if (uiState.isLeftSide) Alignment.CenterStart else Alignment.CenterEnd)
+                        .padding(
+                            start = if (uiState.isLeftSide) collapseButtonEdgePadding else 0.dp,
+                            end = if (uiState.isLeftSide) 0.dp else collapseButtonEdgePadding,
+                        )
+                        .size(SliderIconContainerSize)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            viewModel.rescheduleTimeout()
+                            viewModel.collapseIfExpanded()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowRight,
+                        contentDescription = "Collapse",
+                        modifier = Modifier
+                            .size(HeaderIconSize)
+                            .graphicsLayer { scaleX = if (uiState.isLeftSide) -1f else 1f },
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
             }
         }
     }

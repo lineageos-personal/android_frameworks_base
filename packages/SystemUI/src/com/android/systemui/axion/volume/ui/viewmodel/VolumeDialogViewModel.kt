@@ -16,6 +16,7 @@
 
 package com.android.systemui.axion.volume.ui.viewmodel
 
+import android.os.VibrationEffect
 import com.android.systemui.axion.volume.dagger.AxionVolumeDialogScope
 import com.android.systemui.axion.volume.dagger.AxionVolumeScope
 import com.android.systemui.dagger.qualifiers.Background
@@ -27,6 +28,7 @@ import com.android.systemui.axion.volume.domain.model.AxionVolumeStreamModel
 import com.android.systemui.axion.volume.domain.model.VolumeSliderItem
 import com.android.systemui.axion.volume.ui.composable.MaxVisibleSliders
 import com.android.systemui.haptics.slider.compose.ui.SliderHapticsViewModel
+import com.android.systemui.statusbar.VibratorHelper
 import javax.inject.Inject
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -64,6 +66,7 @@ data class AxionVolumeDialogUiState(
 class AxionVolumeDialogViewModel @Inject constructor(
     private val interactor: AxionVolumeDialogInteractor,
     val sliderHapticsViewModelFactory: SliderHapticsViewModel.Factory,
+    private val vibratorHelper: VibratorHelper,
     @AxionVolumeDialogScope private val scope: CoroutineScope,
     @Background private val bgDispatcher: CoroutineDispatcher,
 ) {
@@ -252,6 +255,9 @@ class AxionVolumeDialogViewModel @Inject constructor(
     }
 
     fun setRingerMode(mode: AxionRingerMode) {
+        if (mode != uiState.value.dialogState.ringerMode) {
+            vibrateForRingerMode(mode)
+        }
         scope.launch(bgDispatcher) { interactor.setRingerMode(mode) }
     }
 
@@ -288,6 +294,14 @@ class AxionVolumeDialogViewModel @Inject constructor(
 
         val currentIndex = supportedModes.indexOf(currentState.ringerMode)
         val nextIndex = (currentIndex + 1) % supportedModes.size
-        interactor.setRingerMode(supportedModes[nextIndex])
+        setRingerMode(supportedModes[nextIndex])
+    }
+
+    private fun vibrateForRingerMode(mode: AxionRingerMode) {
+        when (mode) {
+            AxionRingerMode.VIBRATE -> vibratorHelper.vibrate(VibrationEffect.EFFECT_CLICK)
+            AxionRingerMode.NORMAL -> vibratorHelper.vibrate(VibrationEffect.EFFECT_DOUBLE_CLICK)
+            AxionRingerMode.SILENT -> Unit
+        }
     }
 }

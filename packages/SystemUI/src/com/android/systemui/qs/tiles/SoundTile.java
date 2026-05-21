@@ -111,14 +111,14 @@ public class SoundTile extends QSTileImpl<BooleanState> {
         switch (oldState) {
             case AudioManager.RINGER_MODE_NORMAL:
                 newState = AudioManager.RINGER_MODE_VIBRATE;
-                mVibratorHelper.vibrate(VibrationEffect.EFFECT_DOUBLE_CLICK);
+                mVibratorHelper.vibrate(VibrationEffect.EFFECT_CLICK);
                 break;
             case AudioManager.RINGER_MODE_VIBRATE:
                 newState = AudioManager.RINGER_MODE_SILENT;
                 break;
             case AudioManager.RINGER_MODE_SILENT:
                 newState = AudioManager.RINGER_MODE_NORMAL;
-                mVibratorHelper.vibrate(VibrationEffect.EFFECT_CLICK);
+                mVibratorHelper.vibrate(VibrationEffect.EFFECT_DOUBLE_CLICK);
                 break;
         }
         mAudioManager.setRingerModeInternal(newState);
@@ -149,12 +149,12 @@ public class SoundTile extends QSTileImpl<BooleanState> {
             case AudioManager.RINGER_MODE_VIBRATE:
                 state.icon = maybeLoadResourceIcon(R.drawable.ic_qs_ringer_vibrate);
                 state.secondaryLabel = mContext.getString(R.string.quick_settings_sound_vibrate);
-                state.state = Tile.STATE_INACTIVE;
+                state.state = Tile.STATE_ACTIVE;
                 break;
             case AudioManager.RINGER_MODE_SILENT:
                 state.icon = maybeLoadResourceIcon(R.drawable.ic_qs_ringer_silent);
                 state.secondaryLabel = mContext.getString(R.string.quick_settings_sound_silent);
-                state.state = Tile.STATE_INACTIVE;
+                state.state = Tile.STATE_ACTIVE;
                 break;
         }
     }

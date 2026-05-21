@@ -19,7 +19,7 @@ package com.android.systemui.axion.volume.ui.composable
 import androidx.compose.ui.unit.dp
 
 internal val SliderTrackHeight = 160.dp
-internal val SliderTrackWidthThin = 10.dp
+internal val SliderTrackWidthThin = 14.dp
 internal val SliderTrackWidthThick = 40.dp
 internal val SliderCornerRadius = 100.dp
 internal val SliderIconSize = 20.dp
