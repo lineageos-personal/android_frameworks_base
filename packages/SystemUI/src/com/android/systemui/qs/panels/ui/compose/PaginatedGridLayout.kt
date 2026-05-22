@@ -197,7 +197,7 @@ private fun FooterBar(
         PagerDots(
             pagerState = pagerState,
             activeColor = MaterialTheme.colorScheme.primary,
-            nonActiveColor = MaterialTheme.colorScheme.surfaceBright.copy(alpha = 0.5f),
+            nonActiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
             modifier = Modifier.wrapContentWidth(),
             showArrows = showArrowsInPager,
         )

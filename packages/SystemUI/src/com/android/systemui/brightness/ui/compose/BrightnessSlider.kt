@@ -124,6 +124,7 @@ import com.android.systemui.haptics.slider.SeekableSliderTrackerConfig
 import com.android.systemui.haptics.slider.SliderHapticFeedbackConfig
 import com.android.systemui.haptics.slider.compose.ui.SliderHapticsViewModel
 import com.android.systemui.lifecycle.rememberViewModel
+import com.android.systemui.qs.composefragment.LocalBlurEnabled
 import com.android.systemui.qs.ui.compose.borderOnFocus
 import com.android.systemui.res.R
 import com.android.systemui.utils.PolicyRestriction
@@ -420,6 +421,17 @@ private fun readShowAutoBrightness(cr: ContentResolver): Boolean =
     }
 
 @Composable
+@ReadOnlyComposable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private fun inactiveBrightnessBackground(): Color {
+    return if (LocalBlurEnabled.current) {
+        LocalAndroidColorScheme.current.surfaceEffect1
+    } else {
+        MaterialTheme.colorScheme.surfaceBright
+    }
+}
+
+@Composable
 private fun drawAutoBrightnessButton(
     autoMode: Boolean,
     onIconClick: suspend () -> Unit,
@@ -437,7 +449,7 @@ private fun drawAutoBrightnessButton(
         targetValue = if (autoMode) {
             MaterialTheme.colorScheme.primary
         } else {
-            LocalAndroidColorScheme.current.surfaceEffect1
+            inactiveBrightnessBackground()
         }
     )
     val iconTint by animateColorAsState(
@@ -622,7 +634,7 @@ object BrightnessSliderMotionTestKeys {
 private fun colors(): SliderColors {
     return SliderDefaults.colors()
         .copy(
-            inactiveTrackColor = LocalAndroidColorScheme.current.surfaceEffect1,
+            inactiveTrackColor = inactiveBrightnessBackground(),
             activeTickColor = MaterialTheme.colorScheme.onPrimary,
             inactiveTickColor = MaterialTheme.colorScheme.onSurface,
         )
