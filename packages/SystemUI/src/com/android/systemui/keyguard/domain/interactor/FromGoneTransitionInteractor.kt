@@ -72,6 +72,9 @@ constructor(
 
     fun showKeyguard() {
         scope.launch("$TAG#showKeyguard") {
+            if (!inOrTransitioningToRelevantKeyguardState()) {
+                return@launch
+            }
             startTransitionTo(KeyguardState.LOCKSCREEN, ownerReason = "showKeyguard()")
         }
     }
@@ -102,6 +105,9 @@ constructor(
                     .filterRelevantKeyguardState()
                     .sample(communalSceneInteractor.isIdleOnCommunalNotEditMode, ::Pair)
                     .collect { (lockReason, idleOnCommunal) ->
+                        if (!inOrTransitioningToRelevantKeyguardState()) {
+                            return@collect
+                        }
                         val to =
                             if (idleOnCommunal) {
                                 KeyguardState.GLANCEABLE_HUB
@@ -117,6 +123,9 @@ constructor(
                     .filterRelevantKeyguardStateAnd { isKeyguardShowing -> isKeyguardShowing }
                     .sample(communalSceneInteractor.isIdleOnCommunalNotEditMode, ::Pair)
                     .collect { (_, isIdleOnCommunal) ->
+                        if (!inOrTransitioningToRelevantKeyguardState()) {
+                            return@collect
+                        }
                         val to =
                             if (isIdleOnCommunal) {
                                 KeyguardState.GLANCEABLE_HUB
