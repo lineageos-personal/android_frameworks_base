@@ -40,6 +40,7 @@ import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.boundsInWindow
@@ -49,11 +50,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.android.axion.compose.lifecycle.repeatWhenAttached
 import com.android.systemui.axion.volume.ui.composable.AxionVolumeDialogContent
 import com.android.systemui.axion.volume.ui.viewmodel.AxionVolumeDialogViewModel
 import com.android.systemui.axion.volume.ui.viewmodel.VisibilityState
 import com.android.systemui.dagger.qualifiers.Application
-import com.android.axion.compose.lifecycle.repeatWhenAttached
 import com.android.systemui.res.R
 import javax.inject.Inject
 
@@ -156,11 +158,16 @@ class AxionVolumeDialog @Inject constructor(
                         },
                         MotionScheme.expressive()
                     ) {
+                        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(12.dp),
-                            contentAlignment = if (isLeftSide) Alignment.CenterStart else Alignment.CenterEnd
+                            contentAlignment = if (uiState.isLeftSide) {
+                                Alignment.CenterStart
+                            } else {
+                                Alignment.CenterEnd
+                            }
                         ) {
                             Box(
                                 modifier = Modifier.onGloballyPositioned { coords ->
@@ -173,7 +180,7 @@ class AxionVolumeDialog @Inject constructor(
                                     )
                                 }
                             ) {
-                                AxionVolumeDialogContent(viewModel)
+                                AxionVolumeDialogContent(viewModel = viewModel)
                             }
                         }
                     }

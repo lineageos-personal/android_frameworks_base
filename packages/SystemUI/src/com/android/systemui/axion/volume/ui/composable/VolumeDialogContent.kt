@@ -19,9 +19,12 @@ package com.android.systemui.axion.volume.ui.composable
 
 import android.media.AudioManager
 import android.view.HapticFeedbackConstants
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -61,60 +64,17 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.android.compose.animation.scene.ContentScope
-import com.android.compose.animation.scene.ElementKey
-import com.android.compose.animation.scene.SceneKey
-import com.android.compose.animation.scene.SceneTransitionLayout
-import com.android.compose.animation.scene.rememberMutableSceneTransitionLayoutState
-import com.android.compose.animation.scene.transitions
 import com.android.systemui.axion.volume.domain.model.VolumeSliderItem
 import com.android.systemui.axion.volume.ui.viewmodel.AxionVolumeDialogUiState
 import com.android.systemui.axion.volume.ui.viewmodel.AxionVolumeDialogViewModel
 import com.android.systemui.res.R
+import kotlinx.coroutines.delay
 
 private val CardShape = RoundedCornerShape(DialogCornerRadius)
-
-private object VolumeScenes {
-    val Collapsed = SceneKey("ax_vol_collapsed")
-    val Expanded = SceneKey("ax_vol_expanded")
-}
-
-private object VolumeElements {
-    val RingerCircle = ElementKey("ax_vol_ringer_circle")
-    val RingerRow = ElementKey("ax_vol_ringer_row")
-    val CollapsedSliderCard = ElementKey("ax_vol_collapsed_slider_card")
-    val ExpandedSliderCard = ElementKey("ax_vol_expanded_slider_card")
-}
-
-private val VolumeTransitions = transitions {
-    from(VolumeScenes.Collapsed, to = VolumeScenes.Expanded) {
-        spec = tween(durationMillis = 300)
-        fractionRange(end = 0.2f) {
-            fade(VolumeElements.RingerCircle)
-            fade(VolumeElements.CollapsedSliderCard)
-        }
-        fractionRange(start = 0.2f) {
-            fade(VolumeElements.RingerRow)
-            fade(VolumeElements.ExpandedSliderCard)
-        }
-    }
-    from(VolumeScenes.Expanded, to = VolumeScenes.Collapsed) {
-        spec = tween(durationMillis = 250)
-        fractionRange(end = 0.2f) {
-            fade(VolumeElements.RingerRow)
-            fade(VolumeElements.ExpandedSliderCard)
-        }
-        fractionRange(start = 0.2f) {
-            fade(VolumeElements.RingerCircle)
-            fade(VolumeElements.CollapsedSliderCard)
-        }
-    }
-}
+private const val PANEL_TRANSITION_DURATION_MS = 300
 
 @Composable
-fun AxionVolumeDialogContent(
-    viewModel: AxionVolumeDialogViewModel
-) {
+fun AxionVolumeDialogContent(viewModel: AxionVolumeDialogViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isVisible = uiState.isVisible
     val isLeft = uiState.isLeftSide
@@ -156,14 +116,20 @@ fun AxionVolumeDialogContent(
     val sliderItems by viewModel.sliderItems.collectAsStateWithLifecycle()
     val currStreamCount by viewModel.currStreamCount.collectAsStateWithLifecycle()
     val edgeAlignment = if (isLeft) Alignment.CenterStart else Alignment.CenterEnd
+    val slideDirection = if (isLeft) -1 else 1
 
-    val currentScene = if (isExpanded) VolumeScenes.Expanded else VolumeScenes.Collapsed
-    val stlState = rememberMutableSceneTransitionLayoutState(currentScene, VolumeTransitions)
+    var showCollapsed by remember { mutableStateOf(!isExpanded) }
+    var showExpanded by remember { mutableStateOf(isExpanded) }
 
     LaunchedEffect(isExpanded) {
-        val target = if (isExpanded) VolumeScenes.Expanded else VolumeScenes.Collapsed
-        if (stlState.transitionState.currentScene != target) {
-            stlState.setTargetScene(target, animationScope = this)
+        if (isExpanded) {
+            showCollapsed = false
+            delay(PANEL_TRANSITION_DURATION_MS.toLong())
+            showExpanded = true
+        } else {
+            showExpanded = false
+            delay(PANEL_TRANSITION_DURATION_MS.toLong())
+            showCollapsed = true
         }
     }
 
@@ -171,30 +137,52 @@ fun AxionVolumeDialogContent(
         modifier = Modifier
             .graphicsLayer {
                 alpha = visibilityProgress
-                val dir = if (isLeft) -1f else 1f
-                translationX = dir * 24f * (1f - visibilityProgress)
+                translationX = slideDirection * 24f * (1f - visibilityProgress)
                 translationY = animatedOverscroll
             },
         contentAlignment = edgeAlignment
     ) {
-        SceneTransitionLayout(state = stlState) {
-            scene(VolumeScenes.Collapsed) {
-                CollapsedPanelContent(viewModel = viewModel, uiState = uiState, isLeft = isLeft)
-            }
-            scene(VolumeScenes.Expanded) {
-                ExpandedPanelContent(
-                    viewModel = viewModel,
-                    uiState = uiState,
-                    sliderItems = sliderItems,
-                    currStreamCount = currStreamCount
-                )
-            }
+        AnimatedVisibility(
+            visible = showCollapsed,
+            enter = slideInHorizontally(
+                initialOffsetX = { slideDirection * it },
+                animationSpec = tween(PANEL_TRANSITION_DURATION_MS)
+            ),
+            exit = slideOutHorizontally(
+                targetOffsetX = { slideDirection * it },
+                animationSpec = tween(PANEL_TRANSITION_DURATION_MS)
+            )
+        ) {
+            CollapsedPanelContent(
+                viewModel = viewModel,
+                uiState = uiState,
+                isLeft = isLeft
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showExpanded,
+            enter = slideInHorizontally(
+                initialOffsetX = { slideDirection * it },
+                animationSpec = tween(PANEL_TRANSITION_DURATION_MS)
+            ),
+            exit = slideOutHorizontally(
+                targetOffsetX = { slideDirection * it },
+                animationSpec = tween(PANEL_TRANSITION_DURATION_MS)
+            )
+        ) {
+            ExpandedPanelContent(
+                viewModel = viewModel,
+                uiState = uiState,
+                sliderItems = sliderItems,
+                currStreamCount = currStreamCount
+            )
         }
     }
 }
 
 @Composable
-private fun ContentScope.CollapsedPanelContent(
+private fun CollapsedPanelContent(
     viewModel: AxionVolumeDialogViewModel,
     uiState: AxionVolumeDialogUiState,
     isLeft: Boolean,
@@ -208,10 +196,8 @@ private fun ContentScope.CollapsedPanelContent(
 
     val surfaceBright = MaterialTheme.colorScheme.surfaceBright
 
-    val cardAnimDir = if (isLeft) -1f else 1f
     var isCardVisible by remember { mutableStateOf(appVolumes.isNotEmpty()) }
     var lastAppVolumes by remember { mutableStateOf(appVolumes) }
-    val appCardEntrance = remember { Animatable(0f) }
 
     LaunchedEffect(appVolumes) {
         if (appVolumes.isNotEmpty()) lastAppVolumes = appVolumes
@@ -219,10 +205,7 @@ private fun ContentScope.CollapsedPanelContent(
     LaunchedEffect(appVolumes.isNotEmpty()) {
         if (appVolumes.isNotEmpty()) {
             isCardVisible = true
-            appCardEntrance.snapTo(0f)
-            appCardEntrance.animateTo(1f, tween(durationMillis = 320))
         } else {
-            appCardEntrance.animateTo(0f, tween(durationMillis = 220))
             isCardVisible = false
         }
     }
@@ -239,8 +222,7 @@ private fun ContentScope.CollapsedPanelContent(
                 onClick = {
                     viewModel.rescheduleTimeout()
                     viewModel.cycleRingerMode()
-                },
-                modifier = Modifier.element(VolumeElements.RingerCircle)
+                }
             )
 
             Spacer(modifier = Modifier.height(RingerToSliderGap))
@@ -248,7 +230,6 @@ private fun ContentScope.CollapsedPanelContent(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .element(VolumeElements.CollapsedSliderCard)
                     .clip(CardShape)
                     .background(surfaceBright)
                     .padding(bottom = ContentSpacingSmall)
@@ -297,38 +278,31 @@ private fun ContentScope.CollapsedPanelContent(
 
     if (isCardVisible) {
         val appCards: @Composable () -> Unit = {
-            lastAppVolumes.take(MaxVisibleSliders).forEachIndexed { index, app ->
-                key(app.packageName) {
-                    val sliderEntrance = remember { Animatable(0f) }
-                    LaunchedEffect(Unit) {
-                        sliderEntrance.animateTo(
-                            1f,
-                            tween(durationMillis = 240, delayMillis = index * 50)
-                        )
-                    }
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.graphicsLayer {
-                            alpha = appCardEntrance.value * sliderEntrance.value
-                            translationX = cardAnimDir * 24f * (1f - appCardEntrance.value)
-                            translationY = 16f * (1f - sliderEntrance.value)
-                        }
-                    ) {
-                        Spacer(modifier = Modifier.height(RingerCircleSize + RingerToSliderGap))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(RingerToSliderGap),
+                verticalAlignment = Alignment.Top
+            ) {
+                lastAppVolumes.take(MaxVisibleSliders).forEach { app ->
+                    key(app.packageName) {
                         Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .clip(CardShape)
-                                .background(surfaceBright)
-                                .padding(bottom = ContentSpacingSmall)
-                                .pointerInput(Unit) { detectTapGestures {} }
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            AppVolumeSlider(
-                                appVolume = app,
-                                viewModel = viewModel,
-                                touchWidth = CollapsedPanelWidth,
-                                showPercentage = false
-                            )
+                            Spacer(modifier = Modifier.height(RingerCircleSize + RingerToSliderGap))
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .clip(CardShape)
+                                    .background(surfaceBright)
+                                    .padding(bottom = ContentSpacingSmall)
+                                    .pointerInput(Unit) { detectTapGestures {} }
+                            ) {
+                                AppVolumeSlider(
+                                    appVolume = app,
+                                    viewModel = viewModel,
+                                    touchWidth = CollapsedPanelWidth,
+                                    showPercentage = false
+                                )
+                            }
                         }
                     }
                 }
@@ -353,7 +327,7 @@ private fun ContentScope.CollapsedPanelContent(
 }
 
 @Composable
-private fun ContentScope.ExpandedPanelContent(
+private fun ExpandedPanelContent(
     viewModel: AxionVolumeDialogViewModel,
     uiState: AxionVolumeDialogUiState,
     sliderItems: List<VolumeSliderItem>,
@@ -378,13 +352,13 @@ private fun ContentScope.ExpandedPanelContent(
     ) {
         Box(
             modifier = Modifier
-                .element(VolumeElements.RingerRow)
                 .clip(CardShape)
                 .background(surfaceBright)
         ) {
             RingerRow(
                 ringerMode = ringerMode,
                 supportedModes = supportedModes,
+                isLeftSide = uiState.isLeftSide,
                 panelWidth = panelWidth,
                 onModeSelected = { mode ->
                     viewModel.rescheduleTimeout()
@@ -398,7 +372,6 @@ private fun ContentScope.ExpandedPanelContent(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .element(VolumeElements.ExpandedSliderCard)
                 .clip(CardShape)
                 .background(surfaceBright)
                 .padding(bottom = ContentSpacingSmall)

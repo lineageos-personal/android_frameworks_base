@@ -81,12 +81,14 @@ fun RingerCircleButton(
 fun RingerRow(
     ringerMode: AxionRingerMode,
     supportedModes: List<AxionRingerMode>,
+    isLeftSide: Boolean,
     panelWidth: Dp,
     onModeSelected: (AxionRingerMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val modeCount = supportedModes.size.coerceAtLeast(1)
-    val activeIndex = supportedModes.indexOf(ringerMode).coerceAtLeast(0)
+    val displayModes = if (isLeftSide) supportedModes.reversed() else supportedModes
+    val modeCount = displayModes.size.coerceAtLeast(1)
+    val activeIndex = displayModes.indexOf(ringerMode).coerceAtLeast(0)
     val indicatorX = ringerIndicatorX(panelWidth, modeCount, activeIndex)
 
     val motionScheme = MaterialTheme.motionScheme
@@ -119,11 +121,11 @@ fun RingerRow(
         ) {
             if (modeCount >= 1) {
                 RingerIconSlot(
-                    mode = supportedModes[0],
+                    mode = displayModes[0],
                     isActive = activeIndex == 0,
                     activeColor = onPrimary,
                     inactiveColor = onSurface,
-                    onClick = { onModeSelected(supportedModes[0]) }
+                    onClick = { onModeSelected(displayModes[0]) }
                 )
             }
 
@@ -131,28 +133,28 @@ fun RingerRow(
                 val mid = modeCount / 2
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     RingerIconSlot(
-                        mode = supportedModes[mid],
+                        mode = displayModes[mid],
                         isActive = activeIndex == mid,
                         activeColor = onPrimary,
                         inactiveColor = onSurface,
-                        onClick = { onModeSelected(supportedModes[mid]) }
+                        onClick = { onModeSelected(displayModes[mid]) }
                     )
                 }
                 RingerIconSlot(
-                    mode = supportedModes[modeCount - 1],
+                    mode = displayModes[modeCount - 1],
                     isActive = activeIndex == modeCount - 1,
                     activeColor = onPrimary,
                     inactiveColor = onSurface,
-                    onClick = { onModeSelected(supportedModes[modeCount - 1]) }
+                    onClick = { onModeSelected(displayModes[modeCount - 1]) }
                 )
             } else if (modeCount == 2) {
                 Box(modifier = Modifier.weight(1f))
                 RingerIconSlot(
-                    mode = supportedModes[1],
+                    mode = displayModes[1],
                     isActive = activeIndex == 1,
                     activeColor = onPrimary,
                     inactiveColor = onSurface,
-                    onClick = { onModeSelected(supportedModes[1]) }
+                    onClick = { onModeSelected(displayModes[1]) }
                 )
             }
 
