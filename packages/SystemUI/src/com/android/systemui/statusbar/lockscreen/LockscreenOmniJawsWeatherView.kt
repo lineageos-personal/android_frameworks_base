@@ -23,6 +23,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import com.android.internal.util.losp.OmniJawsClient
 import com.android.systemui.plugins.ActivityStarter
+import com.android.systemui.plugins.FalsingManager
 import com.android.systemui.res.R
 import com.google.android.systemui.smartspace.DoubleShadowTextView
 
@@ -30,6 +31,7 @@ class LockscreenOmniJawsWeatherView(
     context: Context,
     handler: Handler,
     private val activityStarter: ActivityStarter,
+    private val falsingManager: FalsingManager,
 ) :
     LinearLayout(context),
     OmniJawsClient.OmniJawsObserver {
@@ -49,7 +51,6 @@ class LockscreenOmniJawsWeatherView(
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        isFocusable = true
 
         val res = resources
         val iconSize = res.getDimensionPixelSize(R.dimen.enhanced_smartspace_icon_size)
@@ -74,7 +75,6 @@ class LockscreenOmniJawsWeatherView(
             }
 
         setOnClickListener { openWeatherAfterKeyguardDismiss() }
-        iconView.setOnClickListener { openWeatherAfterKeyguardDismiss() }
     }
 
     override fun onAttachedToWindow() {
@@ -152,6 +152,9 @@ class LockscreenOmniJawsWeatherView(
     }
 
     private fun openWeatherAfterKeyguardDismiss() {
+        if (falsingManager.isFalseTap(FalsingManager.LOW_PENALTY)) {
+            return
+        }
         context.packageManager.getLaunchIntentForPackage(OmniJawsClient.SERVICE_PACKAGE)?.let {
             activityStarter.postStartActivityDismissingKeyguard(it, 0)
         }

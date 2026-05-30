@@ -324,9 +324,11 @@ constructor(
             cs.apply {
                 largeDateView =
                     lockscreenSmartspaceController.buildAndConnectDateView(previewContext, true)
+                addWeatherView(largeDateView, previewContext, isLargeClock = true)
 
                 smallDateView =
                     lockscreenSmartspaceController.buildAndConnectDateView(previewContext, false)
+                addWeatherView(smallDateView, previewContext, isLargeClock = false)
                 parentView.addView(largeDateView)
                 parentView.addView(smallDateView)
             }
@@ -337,6 +339,7 @@ constructor(
                     previewContext,
                     isLargeClock = false,
                 )
+            addWeatherView(smartSpaceView, previewContext, isLargeClock = false)
 
             val topPadding: Int =
                 smartspaceViewModel.getLargeClockSmartspaceTopPadding(
@@ -360,6 +363,22 @@ constructor(
                 it.alpha = smartspaceViewModel.previewAlpha
             }
         }
+    }
+
+    private fun addWeatherView(
+        dateView: View?,
+        previewContext: Context,
+        isLargeClock: Boolean,
+    ) {
+        val dateWeatherView = dateView as? ViewGroup ?: return
+        val weatherView =
+            lockscreenSmartspaceController.buildAndConnectWeatherView(
+                previewContext,
+                isLargeClock,
+            ) ?: return
+        weatherView.isClickable = false
+        val index = if (dateWeatherView.childCount == 0) 0 else 1
+        dateWeatherView.addView(weatherView, index)
     }
 
     private fun setupKeyguardRootView(previewContext: Context, rootView: ConstraintLayout) {

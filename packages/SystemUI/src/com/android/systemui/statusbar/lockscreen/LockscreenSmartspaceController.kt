@@ -340,7 +340,6 @@ constructor(
     }
 
     /** Constructs the weather view and connects it to the smartspace service. */
-    @Suppress("UNUSED_PARAMETER")
     fun buildAndConnectWeatherView(context: Context?, isLargeClock: Boolean): View? {
         execution.assertIsMainThread()
 
@@ -351,7 +350,19 @@ constructor(
             throw RuntimeException("Cannot build weather view when not decoupled")
         }
 
-        return LockscreenOmniJawsWeatherView(context ?: this.context, handler, activityStarter)
+        return LockscreenOmniJawsWeatherView(
+            context ?: this.context,
+            handler,
+            activityStarter,
+            falsingManager,
+        ).apply {
+            id =
+                if (isLargeClock) {
+                    com.android.systemui.shared.R.id.weather_smartspace_view_large
+                } else {
+                    com.android.systemui.shared.R.id.weather_smartspace_view
+                }
+        }
     }
 
     /** Constructs the smartspace view and connects it to the smartspace service. */
