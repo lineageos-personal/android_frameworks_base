@@ -22,9 +22,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,6 +74,9 @@ import com.android.systemui.axion.volume.domain.model.AxionAppVolumeModel
 import com.android.systemui.axion.volume.domain.model.AxionVolumeStreamModel
 import com.android.systemui.axion.volume.domain.model.VolumeSliderItem
 import com.android.systemui.axion.volume.ui.viewmodel.AxionVolumeDialogViewModel
+import com.android.systemui.haptics.slider.SliderHapticFeedbackFilter
+import com.android.systemui.lifecycle.rememberViewModel
+import com.android.systemui.volume.haptics.ui.VolumeHapticsConfigsProvider
 
 private val GrayscaleMatrix = ColorMatrix().apply { setToSaturation(0f) }
 private val GrayscaleFilter = ColorFilter.colorMatrix(GrayscaleMatrix)
@@ -96,6 +101,7 @@ fun SliderColumn(
         value = if (muted) 0f else stream.level,
         onValueChange = { viewModel.setVolume(stream.streamType, it) },
         onOverscroll = { viewModel.setOverscrollOffset(it) },
+        viewModel = viewModel,
         touchWidth = touchWidth,
         icon = {
             Icon(
@@ -148,6 +154,7 @@ fun AppVolumeSlider(
         value = if (appVolume.isMuted) 0f else appVolume.volume,
         onValueChange = { viewModel.setAppVolume(appVolume.packageName, it) },
         onOverscroll = { viewModel.setOverscrollOffset(it) },
+        viewModel = viewModel,
         touchWidth = touchWidth,
         icon = {
             if (imageBitmap != null) {
@@ -189,6 +196,7 @@ private fun VolumeSlider(
     value: Float,
     onValueChange: (Float) -> Unit,
     onOverscroll: (Float) -> Unit,
+    viewModel: AxionVolumeDialogViewModel,
     touchWidth: Dp,
     icon: @Composable () -> Unit,
     onIconClick: () -> Unit,
@@ -203,6 +211,20 @@ private fun VolumeSlider(
     val currentOnValueChange by rememberUpdatedState(onValueChange)
     val currentOnOverscroll by rememberUpdatedState(onOverscroll)
     val view = LocalView.current
+    val interactionSource = remember { MutableInteractionSource() }
+    var dragStartInteraction by remember { mutableStateOf<DragInteraction.Start?>(null) }
+    val hapticConfigs = remember {
+        VolumeHapticsConfigsProvider.continuousConfigs(SliderHapticFeedbackFilter())
+    }
+    val hapticsViewModel = rememberViewModel(traceName = "AxionVolumeSliderHapticsViewModel") {
+        viewModel.sliderHapticsViewModelFactory.create(
+            interactionSource,
+            0f..1f,
+            Orientation.Vertical,
+            hapticConfigs.hapticFeedbackConfig,
+            hapticConfigs.sliderTrackerConfig,
+        )
+    }
 
     LaunchedEffect(value) {
         if (isDragging) return@LaunchedEffect
@@ -247,7 +269,9 @@ private fun VolumeSlider(
                             val newVal = rawVal.coerceIn(0f, 1f)
                             sliderValue = newVal
                             lastUserInteraction = System.currentTimeMillis()
+                            hapticsViewModel.onValueChange(newVal)
                             currentOnValueChange(newVal)
+                            hapticsViewModel.onValueChangeEnded()
                             if (newVal == 0f || newVal == 1f) {
                                 view.performHapticFeedback(HapticFeedbackConstants.REJECT)
                                 val offset = if (newVal == 0f) 10f else -10f
@@ -262,15 +286,25 @@ private fun VolumeSlider(
                         onDragStart = {
                             isDragging = true
                             wasAtEdge = false
+                            val start = DragInteraction.Start()
+                            dragStartInteraction = start
+                            interactionSource.tryEmit(start)
                             onInteractionStart()
                             val newVal = 1f - (it.y / size.height).coerceIn(0f, 1f)
                             sliderValue = newVal
                             lastUserInteraction = System.currentTimeMillis()
+                            hapticsViewModel.addVelocityDataPoint(newVal)
+                            hapticsViewModel.onValueChange(newVal)
                             currentOnValueChange(newVal)
                         },
                         onDragEnd = {
                             isDragging = false
                             wasAtEdge = false
+                            dragStartInteraction?.let { start ->
+                                interactionSource.tryEmit(DragInteraction.Stop(start))
+                            }
+                            dragStartInteraction = null
+                            hapticsViewModel.onValueChangeEnded()
                             onInteractionEnd()
                             currentOnOverscroll(0f)
                             lastUserInteraction = System.currentTimeMillis()
@@ -278,6 +312,11 @@ private fun VolumeSlider(
                         onDragCancel = {
                             isDragging = false
                             wasAtEdge = false
+                            dragStartInteraction?.let { start ->
+                                interactionSource.tryEmit(DragInteraction.Cancel(start))
+                            }
+                            dragStartInteraction = null
+                            hapticsViewModel.onValueChangeEnded()
                             onInteractionEnd()
                             currentOnOverscroll(0f)
                             lastUserInteraction = System.currentTimeMillis()
@@ -309,6 +348,8 @@ private fun VolumeSlider(
                                 }
                             }
                             lastUserInteraction = System.currentTimeMillis()
+                            hapticsViewModel.addVelocityDataPoint(sliderValue)
+                            hapticsViewModel.onValueChange(sliderValue)
                             currentOnValueChange(sliderValue)
                         }
                     )
