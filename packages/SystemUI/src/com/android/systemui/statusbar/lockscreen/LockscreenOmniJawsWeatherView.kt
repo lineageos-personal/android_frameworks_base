@@ -18,6 +18,7 @@ import android.os.Handler
 import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -38,7 +39,9 @@ class LockscreenOmniJawsWeatherView(
 
     private val weatherClient = OmniJawsClient.get()
     private val iconView = ImageView(context)
-    private val textView = DoubleShadowTextView(context)
+    private val textView =
+        LayoutInflater.from(context)
+            .inflate(R.layout.lockscreen_omnijaws_weather_text, this, false) as DoubleShadowTextView
     private var attached = false
 
     private val settingsObserver =
@@ -64,10 +67,8 @@ class LockscreenOmniJawsWeatherView(
             }
         addView(iconView)
 
-        textView.id = R.id.lockscreen_omnijaws_weather_text
-        textView.setTextAppearance(R.style.DateWeatherText)
-        textView.layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
         addView(textView)
+        baselineAlignedChildIndex = 1
 
         layoutParams =
             LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
